@@ -1,5 +1,5 @@
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class BookingCreate(BaseModel):
     user_id: int
@@ -11,8 +11,7 @@ class BookingCreate(BaseModel):
 class Booking(BookingCreate):
     booking_id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
     
 class UserCreate(BaseModel):
     username: str = Field(max_length=12)
@@ -20,8 +19,7 @@ class UserCreate(BaseModel):
 class User(UserCreate):
     user_id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class RoomCreate(BaseModel):
     room_name: str = Field(max_length=12)
@@ -30,7 +28,6 @@ class RoomCreate(BaseModel):
 class Room(RoomCreate):
     room_id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
