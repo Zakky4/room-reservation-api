@@ -3,6 +3,18 @@ import datetime
 import requests
 import json
 
+def safe_json_response(response):
+    """レスポンスが有効なJSONかどうかを確認し、安全にJSONを取得する"""
+    try:
+        if response.text.strip():
+            return response.json()
+        else:
+            return {"error": f"Empty response: HTTP {response.status_code}"}
+    except json.JSONDecodeError:
+        return {"error": f"Invalid JSON response: {response.text}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
+
 page = st.sidebar.selectbox('Choose your page', ['users', 'rooms', 'bookings'])
 
 if page == 'users':
@@ -22,9 +34,16 @@ if page == 'users':
             url,
             data=json.dumps(data)
         )
+        response_data = safe_json_response(res)
         if res.status_code == 200:
             st.success('ユーザー登録完了')
-        st.json(res.json())
+        elif res.status_code == 400:
+            # HTTP 400エラーの場合、detailメッセージを直接表示
+            error_detail = response_data.get('detail', 'ユーザー登録エラーが発生しました')
+            st.error(error_detail)
+        else:
+            st.error(f'エラーが発生しました: {response_data}')
+        st.json(response_data)
 
 elif page == 'rooms':
     st.title('会議室登録画面')
@@ -46,16 +65,24 @@ elif page == 'rooms':
             url,
             data=json.dumps(data)
         )
+        response_data = safe_json_response(res)
         if res.status_code == 200:
             st.success('会議室登録完了')
-        st.json(res.json())
+        elif res.status_code == 400:
+            # HTTP 400エラーの場合、detailメッセージを直接表示
+            error_detail = response_data.get('detail', '会議室登録エラーが発生しました')
+            st.error(error_detail)
+        else:
+            st.error(f'エラーが発生しました: {response_data}')
+        st.json(response_data)
 
 elif page == 'bookings':
     st.title('会議室予約画面')
     # ユーザー一覧取得
     url_users = 'http://127.0.0.1:8000/users'
     res = requests.get(url_users)
-    users = res.json()
+    users_data = safe_json_response(res)
+    users = users_data if isinstance(users_data, list) else []
     # ユーザー名をキー、ユーザーIDをバリュー
     users_name = {}
     for user in users:
@@ -64,7 +91,8 @@ elif page == 'bookings':
     # 会議室一覧の取得
     url_rooms = 'http://127.0.0.1:8000/rooms'
     res = requests.get(url_rooms)
-    rooms = res.json()
+    rooms_data = safe_json_response(res)
+    rooms = rooms_data if isinstance(rooms_data, list) else []
     rooms_name = {}
     for room in rooms:
         rooms_name[room['room_name']] = {
@@ -78,7 +106,8 @@ elif page == 'bookings':
 
     url_bookings = 'http://127.0.0.1:8000/bookings'
     res = requests.get(url_bookings)
-    bookings = res.json()
+    bookings_data = safe_json_response(res)
+    bookings = bookings_data if isinstance(bookings_data, list) else []
 
     users_id = {}
     for user in users:
@@ -156,5 +185,9 @@ elif page == 'bookings':
             )
             if res.status_code == 200:
                 st.success('予約完了しました')            
-            elif res.status_code == 404 and res.json()['detail'] == 'Already booked' :
-                st.error('指定の時間にはすでに予約が入っています。')
+            elif res.status_code == 404:
+                response_data = safe_json_response(res)
+                if isinstance(response_data, dict) and response_data.get('detail') == 'Already booked':
+                    st.error('指定の時間にはすでに予約が入っています。')
+                else:
+                    st.error(f'予約エラー: {response_data}')

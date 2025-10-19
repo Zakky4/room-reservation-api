@@ -16,6 +16,11 @@ def get_bookings(db: Session, skip: int = 0, limit: int = 100):
 
 # ユーザー登録
 def create_user(db: Session, user: schemas.UserCreate):
+    # 重複チェック
+    existing_user = db.query(models.User).filter(models.User.username == user.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail=f"ユーザー名 '{user.username}' は既に登録されています")
+    
     db_user = models.User(username=user.username)
     db.add(db_user)
     db.commit()
@@ -24,6 +29,11 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 # 会議室登録
 def create_room(db: Session, room: schemas.RoomCreate):
+    # 重複チェック
+    existing_room = db.query(models.Room).filter(models.Room.room_name == room.room_name).first()
+    if existing_room:
+        raise HTTPException(status_code=400, detail=f"会議室名 '{room.room_name}' は既に登録されています")
+    
     db_room = models.Room(room_name=room.room_name, capacity=room.capacity)
     db.add(db_room)
     db.commit()
