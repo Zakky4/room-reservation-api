@@ -2,6 +2,7 @@ import streamlit as st
 import datetime 
 import requests
 import json
+import pandas as pd
 
 def safe_json_response(response):
     """レスポンスが有効なJSONかどうかを確認し、安全にJSONを取得する"""
@@ -101,8 +102,21 @@ elif page == 'bookings':
         }
 
     st.write('### 会議室一覧')
-    for room in rooms:
-        st.write(f"**{room['room_name']}** - 定員: {room['capacity']}名 (ID: {room['room_id']})")
+    
+    # 会議室データをDataFrameに変換
+    if rooms:
+        room_records = []
+        for room in rooms:
+            room_records.append({
+                '会議室ID': room['room_id'],
+                '会議室名': room['room_name'],
+                '定員': f"{room['capacity']}名"
+            })
+        
+        df_rooms = pd.DataFrame(room_records)
+        st.dataframe(df_rooms, use_container_width=True)
+    else:
+        st.info('会議室データがありません')
 
     url_bookings = 'http://127.0.0.1:8000/bookings'
     res = requests.get(url_bookings)
@@ -121,18 +135,29 @@ elif page == 'bookings':
         }
 
     st.write('### 予約一覧')
-    for booking in bookings:
-        username = users_id.get(booking['user_id'], 'Unknown')
-        room_name = rooms_id.get(booking['room_id'], {}).get('room_name', 'Unknown')
-        start_time = datetime.datetime.fromisoformat(booking['start_datetime']).strftime('%Y/%m/%d %H:%M')
-        end_time = datetime.datetime.fromisoformat(booking['end_datetime']).strftime('%Y/%m/%d %H:%M')
+    
+    # 予約データをDataFrameに変換
+    if bookings:
+        booking_records = []
+        for booking in bookings:
+            username = users_id.get(booking['user_id'], 'Unknown')
+            room_name = rooms_id.get(booking['room_id'], {}).get('room_name', 'Unknown')
+            start_time = datetime.datetime.fromisoformat(booking['start_datetime']).strftime('%Y/%m/%d %H:%M')
+            end_time = datetime.datetime.fromisoformat(booking['end_datetime']).strftime('%Y/%m/%d %H:%M')
+            
+            booking_records.append({
+                '予約番号': booking['booking_id'],
+                '予約者': username,
+                '会議室': room_name,
+                '予約人数': f"{booking['booked_num']}名",
+                '開始時刻': start_time,
+                '終了時刻': end_time
+            })
         
-        st.write(f"**予約番号:** {booking['booking_id']}")
-        st.write(f"**予約者:** {username}")
-        st.write(f"**会議室:** {room_name}")
-        st.write(f"**予約人数:** {booking['booked_num']}名")
-        st.write(f"**時間:** {start_time} ～ {end_time}")
-        st.write("---")
+        df_bookings = pd.DataFrame(booking_records)
+        st.dataframe(df_bookings, use_container_width=True)
+    else:
+        st.info('予約データがありません')
 
 
     with st.form(key='booking'):
